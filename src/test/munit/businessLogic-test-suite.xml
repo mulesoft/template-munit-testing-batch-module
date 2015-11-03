@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:metadata="http://www.mulesoft.org/schema/mule/metadata" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:munit="http://www.mulesoft.org/schema/mule/munit" xmlns:spring="http://www.springframework.org/schema/beans" xmlns:scripting="http://www.mulesoft.org/schema/mule/scripting" xmlns:synchronize="http://www.mulesoft.org/schema/mule/synchronize" xmlns:dbserver="http://www.mulesoft.org/schema/mule/dbserver" xmlns:batch="http://www.mulesoft.org/schema/mule/batch" xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw" xmlns:core="http://www.mulesoft.org/schema/mule/core" xmlns:mock="http://www.mulesoft.org/schema/mule/mock" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/munit http://www.mulesoft.org/schema/mule/munit/current/mule-munit.xsd
+http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/scripting http://www.mulesoft.org/schema/mule/scripting/current/mule-scripting.xsd
+http://www.mulesoft.org/schema/mule/synchronize http://www.mulesoft.org/schema/mule/synchronize/current/mule-synchronize.xsd
+http://www.mulesoft.org/schema/mule/dbserver http://www.mulesoft.org/schema/mule/dbserver/current/mule-dbserver.xsd
+http://www.mulesoft.org/schema/mule/batch http://www.mulesoft.org/schema/mule/batch/current/mule-batch.xsd
+http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee/dw/current/dw.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/mock http://www.mulesoft.org/schema/mule/mock/current/mule-mock.xsd">
+    <munit:config mock-connectors="false" mock-inbounds="false" doc:name="MUnit configuration"/>
+    <spring:beans>
+        <spring:import resource="classpath:endpoints.xml"/>
+        <spring:import resource="classpath:config.xml"/>
+        <spring:import resource="classpath:businessLogic.xml"/>
+        <spring:import resource="classpath:errorHandling.xml"/>
+    </spring:beans>
+    <dbserver:config name="TestDbServer" database="test" sqlFile="account.sql" doc:name="DB Server"/>
+    <scripting:script name="syncAccountsInputPayload" engine="Groovy" doc:name="Script"><![CDATA[List list = new ArrayList();
+  Map sfdcRecord = new HashMap();
+
+  sfdcRecord.put("AccountNumber","12345678");
+  sfdcRecord.put("Id","TestId");
+  sfdcRecord.put("LastModifiedById","TestLastModifiedById");
+  sfdcRecord.put("LastModifiedDate","TestLastModifiedDate");
+  sfdcRecord.put("Name","TestName");
+  sfdcRecord.put("NumberOfEmployees","5001");
+  
+  list.add(sfdcRecord);
+
+  return list;]]></scripting:script>
+    <munit:test name="businessLogic-test-suite-syncAccountsBatchTest" description="Test" >
+        <mock:when messageProcessor="sfdc:.*" doc:name="Mock the SFDC connectors">
+            <mock:then-return payload="#[null]"/>
+        </mock:when>
+        <dw:transform-message doc:name="Prepare input payload">
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/java
+---
+[{
+	AccountNumber : "12345678",
+	Description : "TestDescription",
+	Name : "TestName",
+	NumberOfEmployees : "5001",
+	Id : "12345678",
+	LastModifiedDate : "TestDate",
+	LastModifiedById : "TestUser"
+}]]]></dw:set-payload>
+        </dw:transform-message>
+        <synchronize:run-and-wait doc:name="Synchronize">
+            <batch:execute name="syncAccountsBatch" doc:name="Run Batch syncAccountsBatch"/>
+        </synchronize:run-and-wait>
+        <munit:assert-not-null message="Payload should not be null!" doc:name="Assert Not Null Payload"/>
+        <munit:assert-on-equals message="All records should succeed!" expectedValue="#[0L]" actualValue="#[payload.getResult().getFailedRecords()]" doc:name="Check the count of failed records"/>
+    </munit:test>
+    <munit:test name="businessLogic-test-suite-dbSyncAccountsBatchTest" description="Test">
+        <dw:transform-message doc:name="Prepare input payload">
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/java
+---
+[{
+	AccountNumber : "12345678",
+	Description : "TestDescription",
+	Name : "TestName",
+	NumberOfEmployees : "5001",
+	Id : "12345678",
+	LastModifiedDate : "TestDate",
+	LastModifiedById : "TestUser"
+}]]]></dw:set-payload>
+        </dw:transform-message>
+        <synchronize:run-and-wait doc:name="Synchronize">
+            <batch:execute name="dbSyncAccountsBatch" doc:name="Run Batch dbSyncAccountsBatch"/>
+        </synchronize:run-and-wait>
+    </munit:test>
+    <munit:before-suite name="before.suite" description="Starting DB server">
+        <dbserver:start-db-server config-ref="TestDbServer" doc:name="DB Server"/>
+    </munit:before-suite>
+    <munit:after-suite name="after.suite" description="Stopping DB server">
+        <dbserver:stop-db-server config-ref="TestDbServer" doc:name="DB Server"/>
+    </munit:after-suite>
+</mule>

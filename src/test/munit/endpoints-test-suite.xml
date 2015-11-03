@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw" xmlns:metadata="http://www.mulesoft.org/schema/mule/metadata" xmlns:scripting="http://www.mulesoft.org/schema/mule/scripting" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:munit="http://www.mulesoft.org/schema/mule/munit" xmlns:spring="http://www.springframework.org/schema/beans" xmlns:core="http://www.mulesoft.org/schema/mule/core" xmlns:mock="http://www.mulesoft.org/schema/mule/mock" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/munit http://www.mulesoft.org/schema/mule/munit/current/mule-munit.xsd
+http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/mock http://www.mulesoft.org/schema/mule/mock/current/mule-mock.xsd
+http://www.mulesoft.org/schema/mule/scripting http://www.mulesoft.org/schema/mule/scripting/current/mule-scripting.xsd
+http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee/dw/current/dw.xsd">
+    <munit:config name="munit" doc:name="MUnit configuration"/>
+    <spring:beans>
+        <spring:import resource="classpath:endpoints.xml"/>
+        <spring:import resource="classpath:config.xml"/>
+        <spring:import resource="classpath:businessLogic.xml"/>
+        <spring:import resource="classpath:errorHandling.xml"/>
+    </spring:beans>
+    <scripting:script name="test1" engine="Groovy" doc:name="test1"><![CDATA[List list = new ArrayList();
+  Map sfdcRecord = new HashMap();
+
+  sfdcRecord.put("AccountNumber","12345678");
+  sfdcRecord.put("Id","TestId");
+  sfdcRecord.put("LastModifiedById","TestLastModifiedById");
+  sfdcRecord.put("LastModifiedDate","TestLastModifiedDate");
+  sfdcRecord.put("Name","TestName");
+  sfdcRecord.put("NumberOfEmployees","5001");
+  
+  list.add(sfdcRecord);
+
+  return list;]]></scripting:script>
+    <global-property name="trigger.policy" value="push" doc:name="Global Property"/>
+   
+    <munit:test name="endpoints-test-suite-triggerPushFlowTest" description="Test" >
+        <mock:when messageProcessor=".*:.*" doc:name="Mock the JMS">
+            <mock:with-attributes>
+                <mock:with-attribute name="doc:name" whereValue="#['JMS Topic A']"/>
+            </mock:with-attributes>
+            <mock:then-return payload="#[payload]"/>
+        </mock:when>
+        <mock:spy messageProcessor=".*:.*" doc:name="Spy">
+            <mock:with-attributes>
+                <mock:with-attribute name="doc:name" whereValue="#['Transform XML to Accounts']"/>
+            </mock:with-attributes>
+            <mock:assertions-after-call>
+                <munit:assert-on-equals message="Payload after the DW tranformer should contain exactly one record!" expectedValue="#[1]" actualValue="#[payload.size()]" doc:name="Assert Equals"/>
+            </mock:assertions-after-call>
+        </mock:spy>
+<!--         <mock:when messageProcessor=".*:.*" doc:name="Mock"> -->
+<!--             <mock:with-attributes> -->
+<!--                 <mock:with-attribute name="doc:name" whereValue="#['Push notifications listener']"/> -->
+<!--             </mock:with-attributes> -->
+<!--             <mock:then-return payload="#[resultOfScript('test2')]"> -->
+<!--                 <mock:invocation-properties> -->
+<!--                     <mock:invocation-property key="trigger.policy" value="#['push']"/> -->
+<!--                 </mock:invocation-properties> -->
+<!--             </mock:then-return> -->
+
+
+
+<!--         </mock:when> -->
+        <dw:transform-message doc:name="Prepare input payload and  expected response">
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/xml
+%namespace ns0 http://schemas.xmlsoap.org/soap/envelope/
+%namespace ns1 http://soap.sforce.com/2005/09/outbound
+%namespace ns2 urn:sobject.enterprise.soap.sforce.com
+---
+{
+	ns0#Envelope: {
+		ns0#Body: {
+			ns1#notifications: {
+				ns1#OrganizationId: "Dd0000000dtDqEAI",
+				ns1#ActionId: "04kd0000000PCgvAAG",
+				ns1#SessionId: null,
+				ns1#EnterpriseUrl: "https://na14.salesforce.com/services/Soap/c/30.0/00Dd0000000dtDq",
+				ns1#PartnerUrl: "https://na14.salesforce.com/services/Soap/u/30.0/00Dd0000000dtDq",
+				ns1#Notification: {
+					ns1#Id: "04ld000000TzMKpAAN",
+					ns1#sObject: {
+						ns2#Id: "001d000001XD5XKAA1",
+						ns2#AccountNumber: 4564564,
+						ns2#AnnualRevenue: 10000.0,
+						ns2#BillingCity: "City",
+						ns2#BillingCountry: "Country",
+						ns2#BillingPostalCode: "04001",
+						ns2#BillingState: "State",
+						ns2#BillingStreet: "Street",
+						ns2#CreatedById: "005d0000000yYC7AAM",
+						ns2#CreatedDate: |2014-05-05T11:47:49.000Z|,
+						ns2#"CustomerPriority__c": "High",
+						ns2#Description: "description",
+						ns2#Fax: 421995555,
+						ns2#Industry: "Apparel",
+						ns2#IsDeleted: false,
+						ns2#LastModifiedById: "005d0000000yYC7AAM",
+						ns2#LastModifiedDate: |2014-05-19T11:02:14.000Z|,
+						ns2#LastReferencedDate: |2014-05-19T11:02:14.000Z|,
+						ns2#LastViewedDate: |2014-05-19T11:02:14.000Z|,
+						ns2#Name: "accountName",
+						ns2#NumberOfEmployees: 5000,
+						ns2#OwnerId: "005d0000000yYC7AAM",
+						ns2#Ownership: "Public",
+						ns2#Phone: 421995555,
+						ns2#PhotoUrl: "/services/images/photo/001d000001XD5XKAA1",
+						ns2#Rating: "Hot",
+						ns2#"SLA__c": "Gold",
+						ns2#ShippingCity: "Shipping City",
+     					ns2#ShippingCountry: "Country",
+						ns2#ShippingPostalCode: "04001",
+						ns2#ShippingState: "Shipping State",
+						ns2#ShippingStreet: "Shipping Street",
+						ns2#Site: "http://www.test.com",
+						ns2#SystemModstamp: |2014-05-19T11:02:14.000Z|,
+						ns2#Type: "Prospect",
+						ns2#Website: "http://www.test.com"
+					}
+				}
+			}
+		}
+	}
+}]]></dw:set-payload>
+            <dw:set-variable variableName="response"><![CDATA[%dw 1.0
+%output application/java
+---
+"<soapenv:Envelope xmlns:soapenv='http://schemas.xmlsoap.org/soap/envelope/'
+	xmlns:out='http://soap.sforce.com/2005/09/outbound'>
+	<soapenv:Header />
+	<soapenv:Body>
+		<out:notificationsResponse>
+			<out:Ack>true</out:Ack>
+		</out:notificationsResponse>
+	</soapenv:Body>
+</soapenv:Envelope>"]]></dw:set-variable>
+        </dw:transform-message>
+
+        <flow-ref name="triggerPushFlow" doc:name="Call triggerPushFlow"/>
+        <byte-array-to-serializable-transformer doc:name="Byte Array to Serializable"/>
+        <munit:assert-not-null message="Payload should not be null!" doc:name="Assert Not Null Payload"/>
+        <munit:assert-on-equals message="The payload is different from the expected response!" expectedValue="#[flowVars.response.replaceAll(&quot;\\s+&quot;,&quot;&quot;)]" actualValue="#[payload.replaceAll(&quot;\\s+&quot;,&quot;&quot;)]" doc:name="Assert payload is equals to the expected response"/>
+    </munit:test>
+
+</mule>
