@@ -1,41 +1,27 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<mule xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw" xmlns:metadata="http://www.mulesoft.org/schema/mule/metadata" xmlns:scripting="http://www.mulesoft.org/schema/mule/scripting" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:munit="http://www.mulesoft.org/schema/mule/munit" xmlns:spring="http://www.springframework.org/schema/beans" xmlns:core="http://www.mulesoft.org/schema/mule/core" xmlns:mock="http://www.mulesoft.org/schema/mule/mock" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/munit http://www.mulesoft.org/schema/mule/munit/current/mule-munit.xsd
+<mule xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:munit="http://www.mulesoft.org/schema/mule/munit" xmlns:spring="http://www.springframework.org/schema/beans" xmlns:scripting="http://www.mulesoft.org/schema/mule/scripting" xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw" xmlns:core="http://www.mulesoft.org/schema/mule/core" xmlns:mock="http://www.mulesoft.org/schema/mule/mock" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/munit http://www.mulesoft.org/schema/mule/munit/current/mule-munit.xsd
 http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
-http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
-http://www.mulesoft.org/schema/mule/mock http://www.mulesoft.org/schema/mule/mock/current/mule-mock.xsd
 http://www.mulesoft.org/schema/mule/scripting http://www.mulesoft.org/schema/mule/scripting/current/mule-scripting.xsd
-http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee/dw/current/dw.xsd">
+http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee/dw/current/dw.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/mock http://www.mulesoft.org/schema/mule/mock/current/mule-mock.xsd">
     <munit:config name="munit" doc:name="MUnit configuration"/>
     <spring:beans>
         <spring:import resource="classpath:endpoints.xml"/>
         <spring:import resource="classpath:config.xml"/>
         <spring:import resource="classpath:businessLogic.xml"/>
         <spring:import resource="classpath:errorHandling.xml"/>
-    </spring:beans>
-    <scripting:script name="test1" engine="Groovy" doc:name="test1"><![CDATA[List list = new ArrayList();
-  Map sfdcRecord = new HashMap();
-
-  sfdcRecord.put("AccountNumber","12345678");
-  sfdcRecord.put("Id","TestId");
-  sfdcRecord.put("LastModifiedById","TestLastModifiedById");
-  sfdcRecord.put("LastModifiedDate","TestLastModifiedDate");
-  sfdcRecord.put("Name","TestName");
-  sfdcRecord.put("NumberOfEmployees","5001");
-  
-  list.add(sfdcRecord);
-
-  return list;]]></scripting:script>
+    </spring:beans>    
     <global-property name="trigger.policy" value="push" doc:name="Global Property"/>
-   
-    <munit:test name="endpoints-test-suite-triggerPushFlowTest" description="Test" >
+    <munit:test name="endpoints-test-suite-triggerPushFlowTest" description="Test">
         <mock:when messageProcessor=".*:.*" doc:name="Mock the JMS">
             <mock:with-attributes>
                 <mock:with-attribute name="doc:name" whereValue="#['JMS Topic A']"/>
             </mock:with-attributes>
             <mock:then-return payload="#[payload]"/>
         </mock:when>
-        <mock:spy messageProcessor=".*:.*" doc:name="Spy">
+        <mock:spy messageProcessor=".*:.*" doc:name="Spy Dataweave transformation">
             <mock:with-attributes>
                 <mock:with-attribute name="doc:name" whereValue="#['Transform XML to Accounts']"/>
             </mock:with-attributes>
@@ -43,19 +29,6 @@ http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee
                 <munit:assert-on-equals message="Payload after the DW tranformer should contain exactly one record!" expectedValue="#[1]" actualValue="#[payload.size()]" doc:name="Assert Equals"/>
             </mock:assertions-after-call>
         </mock:spy>
-<!--         <mock:when messageProcessor=".*:.*" doc:name="Mock"> -->
-<!--             <mock:with-attributes> -->
-<!--                 <mock:with-attribute name="doc:name" whereValue="#['Push notifications listener']"/> -->
-<!--             </mock:with-attributes> -->
-<!--             <mock:then-return payload="#[resultOfScript('test2')]"> -->
-<!--                 <mock:invocation-properties> -->
-<!--                     <mock:invocation-property key="trigger.policy" value="#['push']"/> -->
-<!--                 </mock:invocation-properties> -->
-<!--             </mock:then-return> -->
-
-
-
-<!--         </mock:when> -->
         <dw:transform-message doc:name="Prepare input payload and  expected response">
             <dw:set-payload><![CDATA[%dw 1.0
 %output application/xml
@@ -130,11 +103,43 @@ http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee
 	</soapenv:Body>
 </soapenv:Envelope>"]]></dw:set-variable>
         </dw:transform-message>
-
         <flow-ref name="triggerPushFlow" doc:name="Call triggerPushFlow"/>
         <byte-array-to-serializable-transformer doc:name="Byte Array to Serializable"/>
         <munit:assert-not-null message="Payload should not be null!" doc:name="Assert Not Null Payload"/>
-        <munit:assert-on-equals message="The payload is different from the expected response!" expectedValue="#[flowVars.response.replaceAll(&quot;\\s+&quot;,&quot;&quot;)]" actualValue="#[payload.replaceAll(&quot;\\s+&quot;,&quot;&quot;)]" doc:name="Assert payload is equals to the expected response"/>
+        <munit:assert-on-equals message="The payload is different from the expected response!" expectedValue="#[flowVars.response.replaceAll(&quot;\\s+&quot;,&quot;&quot;)]" actualValue="#[payload.replaceAll(&quot;\\s+&quot;,&quot;&quot;)]" doc:name="Assert payload equals to the expected response"/>
     </munit:test>
-
+    <munit:test name="endpoints-test-suite-triggerFlowTest" description="Test">
+        <mock:when messageProcessor=".*:.*" doc:name="Mock JMS">
+            <mock:with-attributes>
+                <mock:with-attribute name="doc:name" whereValue="#['JMS Topic A']"/>
+            </mock:with-attributes>
+            <mock:then-return payload="#[&quot;success&quot;]"/>
+        </mock:when>
+        <mock:spy messageProcessor=".*:.*" doc:name="Spy Dataweave transformation">
+            <mock:with-attributes>
+                <mock:with-attribute name="doc:name" whereValue="#['Transform Iterator to the List']"/>
+            </mock:with-attributes>
+            <mock:assertions-after-call>
+                <munit:assert-payload-equals message="Payload should be equal to the value from afterTransformation variable" expectedValue="#[flowVars.afterTransformation]" doc:name="Assert Payload"/>
+            </mock:assertions-after-call>
+        </mock:spy>
+        <dw:transform-message doc:name="Prepare input payload">
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/java
+---
+[{
+	AccountNumber : "12345678",
+	Description : "TestDescription",
+	Name : "TestName",
+	NumberOfEmployees : "5001",
+	Id : "12345678",
+	LastModifiedDate : "TestDate",
+	LastModifiedById : "TestUser"
+}]]]></dw:set-payload>
+        </dw:transform-message>
+        <set-variable variableName="afterTransformation" value="#[payload]" doc:name="Set afterTransformation variable"/>
+        <flow-ref name="triggerFlow" doc:name="Flow-ref to triggerFlow"/>
+        <munit:assert-not-null message="Payload should not be null!" doc:name="Assert Not Null Payload"/>
+        <munit:assert-payload-equals message="Payload should contain success message!" expectedValue="#[&quot;success&quot;]" doc:name="Assert Payload"/>
+    </munit:test>
 </mule>

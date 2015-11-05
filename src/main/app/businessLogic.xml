@@ -7,7 +7,7 @@
 	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
 	xmlns:spring="http://www.springframework.org/schema/beans" 
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:json="http://www.mulesoft.org/schema/mule/json"	
-	version="EE-3.7.2" 
+	 
 	xsi:schemaLocation="http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
 http://www.mulesoft.org/schema/mule/sfdc http://www.mulesoft.org/schema/mule/sfdc/current/mule-sfdc.xsd
 http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
@@ -26,7 +26,7 @@ http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee
 		</jms:inbound-endpoint>
         <byte-array-to-serializable-transformer doc:name="Byte Array to Serializable"/>
 
-		<batch:execute name="syncAccountsBatch" doc:name="Execute suncAccountsBatch" />
+		<batch:execute name="syncAccountsBatch" doc:name="Execute syncAccountsBatch" />
 		<exception-strategy ref="defaultChoiceExceptionStrategy"
 			doc:name="Default Exception Strategy" />
 	</flow>
@@ -92,6 +92,7 @@ payload map $ - "LastModifiedDate"
                         <db:in-param name="paramName" value="#[payload.Name]"/>
 
 
+
 					</db:select>
 				</enricher>
 
@@ -139,6 +140,7 @@ WHERE Name = #[payload['Name']]]]></db:parameterized-query>
 	CURRENT_USER,
 	CURRENT_TIMESTAMP
 )]]></db:parameterized-query>
+
 
 
 

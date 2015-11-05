@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<mule xmlns:metadata="http://www.mulesoft.org/schema/mule/metadata" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:munit="http://www.mulesoft.org/schema/mule/munit" xmlns:spring="http://www.springframework.org/schema/beans" xmlns:scripting="http://www.mulesoft.org/schema/mule/scripting" xmlns:synchronize="http://www.mulesoft.org/schema/mule/synchronize" xmlns:dbserver="http://www.mulesoft.org/schema/mule/dbserver" xmlns:batch="http://www.mulesoft.org/schema/mule/batch" xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw" xmlns:core="http://www.mulesoft.org/schema/mule/core" xmlns:mock="http://www.mulesoft.org/schema/mule/mock" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/munit http://www.mulesoft.org/schema/mule/munit/current/mule-munit.xsd
+<mule xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:munit="http://www.mulesoft.org/schema/mule/munit" xmlns:spring="http://www.springframework.org/schema/beans" xmlns:scripting="http://www.mulesoft.org/schema/mule/scripting" xmlns:synchronize="http://www.mulesoft.org/schema/mule/synchronize" xmlns:dbserver="http://www.mulesoft.org/schema/mule/dbserver" xmlns:batch="http://www.mulesoft.org/schema/mule/batch" xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw" xmlns:core="http://www.mulesoft.org/schema/mule/core" xmlns:mock="http://www.mulesoft.org/schema/mule/mock" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/munit http://www.mulesoft.org/schema/mule/munit/current/mule-munit.xsd
 http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
 http://www.mulesoft.org/schema/mule/scripting http://www.mulesoft.org/schema/mule/scripting/current/mule-scripting.xsd
 http://www.mulesoft.org/schema/mule/synchronize http://www.mulesoft.org/schema/mule/synchronize/current/mule-synchronize.xsd
@@ -9,14 +9,14 @@ http://www.mulesoft.org/schema/mule/batch http://www.mulesoft.org/schema/mule/ba
 http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee/dw/current/dw.xsd
 http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
 http://www.mulesoft.org/schema/mule/mock http://www.mulesoft.org/schema/mule/mock/current/mule-mock.xsd">
-    <munit:config mock-connectors="false" mock-inbounds="false" doc:name="MUnit configuration"/>
+    <munit:config mock-connectors="false"  mock-inbounds="false" doc:name="MUnit configuration"/>
     <spring:beans>
         <spring:import resource="classpath:endpoints.xml"/>
         <spring:import resource="classpath:config.xml"/>
         <spring:import resource="classpath:businessLogic.xml"/>
         <spring:import resource="classpath:errorHandling.xml"/>
     </spring:beans>
-    <dbserver:config name="TestDbServer" database="test" sqlFile="account.sql" doc:name="DB Server"/>
+    <dbserver:config name="TestDbServer" database="test" sqlFile="account_test.sql" doc:name="DB Server"/>
     <scripting:script name="syncAccountsInputPayload" engine="Groovy" doc:name="Script"><![CDATA[List list = new ArrayList();
   Map sfdcRecord = new HashMap();
 
@@ -33,7 +33,19 @@ http://www.mulesoft.org/schema/mule/mock http://www.mulesoft.org/schema/mule/moc
     <munit:test name="businessLogic-test-suite-syncAccountsBatchTest" description="Test" >
         <mock:when messageProcessor="sfdc:.*" doc:name="Mock the SFDC connectors">
             <mock:then-return payload="#[null]"/>
+
         </mock:when>
+        <mock:spy doc:name="Spy Dataweave transformation" messageProcessor=".*:.*">
+            <mock:with-attributes>
+                <mock:with-attribute name="doc:name" whereValue="#['Remove unnecessary fields and map field types']"/>
+            </mock:with-attributes>
+            <mock:assertions-before-call>
+                <munit:assert-on-equals message="The payload before transformation should be equal to the inputData!" expectedValue="#[flowVars.inputData]" actualValue="#[payload]" doc:name="Assert Equals"/>
+            </mock:assertions-before-call>
+            <mock:assertions-after-call>
+                <munit:assert-on-equals message="The payload after transformation should be equal to the transformedData!" expectedValue="#[flowVars.transformedData]" actualValue="#[payload]" doc:name="Assert Equals"/>
+            </mock:assertions-after-call>
+        </mock:spy>
         <dw:transform-message doc:name="Prepare input payload">
             <dw:set-payload><![CDATA[%dw 1.0
 %output application/java
@@ -47,6 +59,17 @@ http://www.mulesoft.org/schema/mule/mock http://www.mulesoft.org/schema/mule/moc
 	LastModifiedDate : "TestDate",
 	LastModifiedById : "TestUser"
 }]]]></dw:set-payload>
+        </dw:transform-message>
+        <dw:transform-message doc:name="Prepare test variables">
+            <dw:set-variable variableName="transformedData"><![CDATA[%dw 1.0
+%output application/java
+---
+payload map $ - "LastModifiedDate"
+			  - "LastModifiedById" ]]></dw:set-variable>
+            <dw:set-variable variableName="inputData"><![CDATA[%dw 1.0
+%output application/java
+---
+payload]]></dw:set-variable>
         </dw:transform-message>
         <synchronize:run-and-wait doc:name="Synchronize">
             <batch:execute name="syncAccountsBatch" doc:name="Run Batch syncAccountsBatch"/>
@@ -54,7 +77,8 @@ http://www.mulesoft.org/schema/mule/mock http://www.mulesoft.org/schema/mule/moc
         <munit:assert-not-null message="Payload should not be null!" doc:name="Assert Not Null Payload"/>
         <munit:assert-on-equals message="All records should succeed!" expectedValue="#[0L]" actualValue="#[payload.getResult().getFailedRecords()]" doc:name="Check the count of failed records"/>
     </munit:test>
-    <munit:test name="businessLogic-test-suite-dbSyncAccountsBatchTest" description="Test">
+    <munit:test name="businessLogic-test-suite-dbSyncAccountsBatchTest" description="Test" >
+
         <dw:transform-message doc:name="Prepare input payload">
             <dw:set-payload><![CDATA[%dw 1.0
 %output application/java
@@ -69,9 +93,88 @@ http://www.mulesoft.org/schema/mule/mock http://www.mulesoft.org/schema/mule/moc
 	LastModifiedById : "TestUser"
 }]]]></dw:set-payload>
         </dw:transform-message>
+        <dw:transform-message doc:name="Prepare test variables">
+            <dw:set-variable variableName="name"><![CDATA[%dw 1.0
+%output application/java
+---
+payload[0].Name]]></dw:set-variable>
+            <dw:set-variable variableName="accountNumber"><![CDATA[%dw 1.0
+%output application/java
+---
+payload[0].AccountNumber]]></dw:set-variable>
+            <dw:set-variable variableName="salesforceId"><![CDATA[%dw 1.0
+%output application/java
+---
+payload[0].Id]]></dw:set-variable>
+        </dw:transform-message>
         <synchronize:run-and-wait doc:name="Synchronize">
             <batch:execute name="dbSyncAccountsBatch" doc:name="Run Batch dbSyncAccountsBatch"/>
         </synchronize:run-and-wait>
+        <dbserver:execute-query config-ref="TestDbServer" sql="Select AccountNumber, Name from Account where SalesforceId=#[flowVars.salesforceId]" doc:name="Select AccountNumber and Name"/>
+
+        <munit:assert-not-null message="Payload should not be null!" doc:name="Assert Not Null Payload"/>
+        <foreach doc:name="For each record">
+            <munit:assert-on-equals message="The Account name from input payload and from DB have to be equal!" expectedValue="#[flowVars.name]" actualValue="#[payload.NAME]" doc:name="Assert Names are Equal"/>
+            <munit:assert-on-equals message="The Account number from input payload and from DB have to be equal!" expectedValue="#[flowVars.accountNumber]" actualValue="#[payload.ACCOUNTNUMBER]" doc:name="Assert AccountNumbers are Equal"/>
+        </foreach>
+    </munit:test>
+    <munit:test name="businessLogic-test-suite-processBQueueObjectsToBatchFlowTest" description="Test" >
+        <mock:when messageProcessor=".*:.*" doc:name="Mock JMS">
+            <mock:with-attributes>
+                <mock:with-attribute name="doc:name" whereValue="#['JMS Topic A']"/>
+            </mock:with-attributes>
+            <mock:then-return payload="#[payload]"/>
+        </mock:when>
+        <mock:when messageProcessor=".*:.*" doc:name="Mock Execute dbSyncAccountsBatch">
+            <mock:with-attributes>
+                <mock:with-attribute name="doc:name" whereValue="#['Execute dbSyncAccountsBatch']"/>
+            </mock:with-attributes>
+            <mock:then-return payload="#[&quot;success&quot;]"/>
+        </mock:when>
+        <mock:spy messageProcessor=".*:.*" doc:name="Spy Byte Array to Serializable component">
+            <mock:with-attributes>
+                <mock:with-attribute name="doc:name" whereValue="#['Byte Array to Serializable']"/>
+            </mock:with-attributes>
+
+
+            <mock:assertions-after-call>
+                <munit:assert-payload-equals message="Payload should be traformed to the input stream!" expectedValue="#[flowVars.input]" doc:name="Assert Payload"/>
+            </mock:assertions-after-call>
+        </mock:spy>
+        <set-variable variableName="input" value="#[&quot;input stream&quot;]" doc:name="Set input variable"/>
+        <set-payload value="#[flowVars.input]" doc:name="Set Payload"/>
+        <serializable-to-byte-array-transformer doc:name="Serializable to Byte Array"/>
+        <flow-ref name="processBQueueObjectsToBatchFlow" doc:name="Flow-ref to processBQueueObjectsToBatchFlow"/>
+        <munit:assert-payload-equals message="Payload should contain success message!" expectedValue="#[&quot;success&quot;]" doc:name="Assert Payload"/>
+    </munit:test>
+    <munit:test name="businessLogic-test-suite-processAQueueObjectsToBatchFlowTest" description="Test" >
+        <mock:when messageProcessor=".*:.*" doc:name="Mock JMS">
+            <mock:with-attributes>
+                <mock:with-attribute name="doc:name" whereValue="#['JMS Topic A']"/>
+            </mock:with-attributes>
+            <mock:then-return payload="#[payload]"/>
+        </mock:when>
+        <mock:when messageProcessor=".*:.*" doc:name="Mock Execute suncAccountsBatch">
+            <mock:with-attributes>
+                <mock:with-attribute name="doc:name" whereValue="#['Execute syncAccountsBatch']"/>
+            </mock:with-attributes>
+            <mock:then-return payload="#[&quot;success&quot;]"/>
+
+        </mock:when>
+        <mock:spy messageProcessor=".*:.*" doc:name="Spy Byte Array to Serializable component">
+            <mock:with-attributes>
+                <mock:with-attribute name="doc:name" whereValue="#['Byte Array to Serializable']"/>
+            </mock:with-attributes>
+
+            <mock:assertions-after-call>
+                <munit:assert-payload-equals message="Payload should be traformed to the input stream!" expectedValue="#[flowVars.input]" doc:name="Assert Payload"/>
+            </mock:assertions-after-call>
+        </mock:spy>
+        <set-variable variableName="input" value="#[&quot;input stream&quot;]" doc:name="Set input variable"/>
+        <set-payload value="#[flowVars.input]" doc:name="Set Payload"/>
+        <serializable-to-byte-array-transformer doc:name="Serializable to Byte Array"/>
+        <flow-ref name="processAQueueObjectsToBatchFlow" doc:name="Flow-ref to processAQueueObjectsToBatchFlow"/>
+        <munit:assert-payload-equals message="Payload should contain success message!" expectedValue="#[&quot;success&quot;]" doc:name="Assert Payload"/>
     </munit:test>
     <munit:before-suite name="before.suite" description="Starting DB server">
         <dbserver:start-db-server config-ref="TestDbServer" doc:name="DB Server"/>
