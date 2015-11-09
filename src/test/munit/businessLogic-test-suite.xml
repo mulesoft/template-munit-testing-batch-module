@@ -40,10 +40,10 @@ http://www.mulesoft.org/schema/mule/mock http://www.mulesoft.org/schema/mule/moc
                 <mock:with-attribute name="doc:name" whereValue="#['Remove unnecessary fields and map field types']"/>
             </mock:with-attributes>
             <mock:assertions-before-call>
-                <munit:assert-on-equals message="The payload before transformation should be equal to the inputData!" expectedValue="#[flowVars.inputData]" actualValue="#[payload]" doc:name="Assert Equals"/>
+                <munit:assert-payload-equals message="The payload before transformation should be equal to the inputData!" expectedValue="#[flowVars.inputData]" doc:name="Assert Payload"/>
             </mock:assertions-before-call>
             <mock:assertions-after-call>
-                <munit:assert-on-equals message="The payload after transformation should be equal to the transformedData!" expectedValue="#[flowVars.transformedData]" actualValue="#[payload]" doc:name="Assert Equals"/>
+                <munit:assert-payload-equals message="The payload after transformation should be equal to the transformedData!" expectedValue="#[flowVars.transformedData]" doc:name="Assert Payload"/>
             </mock:assertions-after-call>
         </mock:spy>
         <dw:transform-message doc:name="Prepare input payload">
