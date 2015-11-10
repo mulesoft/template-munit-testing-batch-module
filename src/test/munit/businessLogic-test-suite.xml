@@ -17,22 +17,32 @@ http://www.mulesoft.org/schema/mule/mock http://www.mulesoft.org/schema/mule/moc
         <spring:import resource="classpath:errorHandling.xml"/>
     </spring:beans>
     <dbserver:config name="TestDbServer" database="test" sqlFile="account_test.sql" doc:name="DB Server"/>
-    <scripting:script name="syncAccountsInputPayload" engine="Groovy" doc:name="Script"><![CDATA[List list = new ArrayList();
+    <scripting:script name="generatedSfdcPayload" engine="Groovy" doc:name="Script"><![CDATA[
   Map sfdcRecord = new HashMap();
 
   sfdcRecord.put("AccountNumber","12345678");
-  sfdcRecord.put("Id","TestId");
-  sfdcRecord.put("LastModifiedById","TestLastModifiedById");
-  sfdcRecord.put("LastModifiedDate","TestLastModifiedDate");
+  sfdcRecord.put("Id","12345678");
+  sfdcRecord.put("LastModifiedById","TestUser");
+  sfdcRecord.put("LastModifiedDate","TestDate");
   sfdcRecord.put("Name","TestName");
   sfdcRecord.put("NumberOfEmployees","5001");
-  
-  list.add(sfdcRecord);
+  sfdcRecord.put("Description","TestDescription");
 
-  return list;]]></scripting:script>
+  return sfdcRecord;]]></scripting:script>
     <munit:test name="businessLogic-test-suite-syncAccountsBatchTest" description="Test" >
-        <mock:when messageProcessor="sfdc:.*" doc:name="Mock the SFDC connectors">
-            <mock:then-return payload="#[null]"/>
+        <mock:when messageProcessor=".*:.*" doc:name="Mock SFDC GetRecord operation">
+            <mock:with-attributes>
+                <mock:with-attribute name="doc:name" whereValue="#['Query Account in Salesforce Instance B']"/>
+            </mock:with-attributes>
+            <mock:then-return payload="#[resultOfScript('generatedSfdcPayload')]"/>
+
+
+        </mock:when>
+        <mock:when messageProcessor="sfdc:.*" doc:name="Mock SFDC Upsert operation">
+            <mock:with-attributes>
+                <mock:with-attribute name="doc:name" whereValue="#['Upsert Accounts in Salesforce Instance B']"/>
+            </mock:with-attributes>
+            <mock:then-return payload="#[payload]"/>
 
         </mock:when>
         <mock:spy doc:name="Spy Dataweave transformation" messageProcessor=".*:.*">
@@ -124,17 +134,20 @@ payload[0].Id]]></dw:set-variable>
                 <mock:with-attribute name="doc:name" whereValue="#['JMS Topic A']"/>
             </mock:with-attributes>
             <mock:then-return payload="#[payload]"/>
+
         </mock:when>
         <mock:when messageProcessor=".*:.*" doc:name="Mock Execute dbSyncAccountsBatch">
             <mock:with-attributes>
                 <mock:with-attribute name="doc:name" whereValue="#['Execute dbSyncAccountsBatch']"/>
             </mock:with-attributes>
             <mock:then-return payload="#[&quot;success&quot;]"/>
+
         </mock:when>
         <mock:spy messageProcessor=".*:.*" doc:name="Spy Byte Array to Serializable component">
             <mock:with-attributes>
                 <mock:with-attribute name="doc:name" whereValue="#['Byte Array to Serializable']"/>
             </mock:with-attributes>
+
 
 
             <mock:assertions-after-call>

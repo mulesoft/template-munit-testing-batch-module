@@ -15,7 +15,7 @@ http://www.mulesoft.org/schema/mule/mock http://www.mulesoft.org/schema/mule/moc
     </spring:beans>    
     <global-property name="trigger.policy" value="push" doc:name="Global Property"/>
     <munit:test name="endpoints-test-suite-triggerPushFlowTest" description="Test">
-        <mock:when messageProcessor=".*:.*" doc:name="Mock the JMS">
+        <mock:when messageProcessor=".*:.*" doc:name="Mock JMS">
             <mock:with-attributes>
                 <mock:with-attribute name="doc:name" whereValue="#['JMS Topic A']"/>
             </mock:with-attributes>
