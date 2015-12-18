@@ -51,8 +51,8 @@ In order to have this template working as expected, you should be aware of your 
 ### Application Configuration ###
 
 To make the application run, it's required to configure the different end points involved. The configuration files is located for the chosen environment in the [src/main/resources/mule.env.properties]
-The following is an example to show you what vales are expected from the user during the configuration. To run the MUnit tests, the configuration file is located in the [src/test/resources/mule.test.properties]
-
+The following is an example to show you what vales are expected from the user during the configuration. 
+To run the MUnit tests, the configuration file is located in the [src/test/resources/mule.test.properties]
 
 + http.port `9090` 
 + poll.frequencyMillis `60000`
@@ -83,9 +83,9 @@ If it is required to connect to a different Database there should be provided th
 + sfdc.b.url `https://login.salesforce.com/services/Soap/u/32.0`
 
 ### Additional MUnit configuration
-# Test only
-database.url `jdbc:h2:mem:test;MODE=MySQL;USER=;PASSWORD=`
-database.driver `org.h2.Driver`
+**Test only**
++ database.url `jdbc:h2:mem:test;MODE=MySQL;USER=;PASSWORD=`
++ database.driver `org.h2.Driver`
 
 
 # API Calls <a name="apicalls"/>
