@@ -65,7 +65,7 @@ target/
 # --------------------------------------- #
 # Test credentials to be use locally only #
 # --------------------------------------- #
-**/mule.test.properties
+#**/mule.test.properties
 
 # --------------------------------------- #
 # Sub products of release plugin          #
