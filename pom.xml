@@ -10,14 +10,14 @@
 	<modelVersion>4.0.0</modelVersion>
 	<artifactId>template-munit-testing-batch-module</artifactId>
 	<packaging>mule</packaging>
-	<version>1.2.0-SNAPSHOT</version>
+	<version>1.2.0</version>
 	<name>template-munit-testing-batch-module Mule Anypoint Template Project</name>
 
 	<scm>
 		<connection>scm:git:https://github.com/mulesoft/template-munit-testing-batch-module.git</connection>
 		<developerConnection>scm:git:https://github.com/mulesoft/template-munit-testing-batch-module.git</developerConnection>
 		<url>https://github.com/mulesoft/template-munit-testing-batch-module</url>
-		<tag>HEAD</tag>
+		<tag>v1.2.0</tag>
 	</scm>
 
 	<build>
